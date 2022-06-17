@@ -47,11 +47,6 @@ async function navigateCoopPages(categories) {
                 "productTile-details__name-value"
               )[0].textContent ?? "Not on page";
 
-            const brand =
-              product.getElementsByClassName(
-                "productTile__productMeta-value-item"
-              )[0].textContent || "Not specified";
-
             const quantityAmount = parseFloat(
               //   if no quantity amount, default to 1
               product
@@ -105,19 +100,18 @@ async function navigateCoopPages(categories) {
                     .replace(/\s+/g, " ")
                 : quantityString;
 
-            // const productCategory = page.url().split("/")[5];
+            const categories = page.url().split("/")[5];
 
             const productData = {
               storeName: storeName,
               title: title,
-              brand: brand,
-              incrementPrice: incrementPrice,
-              incrementQuantity: incrementQuantity,
-              incrementString: incrementString,
-              quantityAmount: quantityAmount,
-              quantityString: quantityString,
               price: price,
-              //   productCategory: productCategory,
+              categories: categories,
+              incrPrice: incrementPrice,
+              incrQty: incrementQuantity,
+              incrStr: incrementString,
+              qtyAmount: quantityAmount,
+              qtyStr: quantityString,
             };
 
             return productData;
@@ -129,19 +123,22 @@ async function navigateCoopPages(categories) {
 
     const allProducts = allProductPages.flat();
 
-    for (let product of allProducts) {
-      try {
-        await axios.put("http://localhost:8000/product", product);
-      } catch (err) {
-        console.error(err);
-      }
-    }
+    //  for (let product of allProducts) {
+    //    try {
+    //      await axios.put("http://localhost:8000/product", product);
+    //    } catch (err) {
+    //      console.error(err);
+    //    }
+    //  }
+
+    console.log(allProducts);
   }
   console.log("Success");
   await browser.close();
 }
 
 // navigateCoopPages(groceryCategoryNames);
+navigateCoopPages(["fruechte-gemuese/c/m_0001"]);
 
 module.exports = navigateCoopPages;
 
