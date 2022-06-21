@@ -14,13 +14,23 @@ const groceryCategoryNames = [
 ];
 
 async function navigateCoopPages(categories) {
-  const browser = await puppeteer.launch();
+  const browser = await puppeteer.launch({ headless: false });
+  //   const browser = await puppeteer.launch();
 
   const page = await browser.newPage();
 
   for (let category of categories) {
     await page.goto(
       `https://www.coop.ch/de/lebensmittel/${category}?page=1&pageSize=60&q=%3Arelevance&sort=relevance`
+    );
+
+    //  await page.waitForTimeout(3000);
+    const groceryCategory = page.url().split("/")[5];
+    console.log(groceryCategory);
+
+    page.waitForSelector(
+      "body > main > div:nth-child(3) > div.constrained--sm-up > div.productListPageNav.spacing-bottom-10 > div > a:nth-child(5)",
+      { timeout: 50000 }
     );
 
     const totalPages = await page.$eval(
@@ -42,10 +52,13 @@ async function navigateCoopPages(categories) {
         (products) =>
           products.map((product) => {
             const storeName = "Coop";
+
+            const titleRegEx =
+              /naturaplan\s|prix\s|garantie\s|betty\s|bossi\s|\sca.*/gi;
             const title =
-              product.getElementsByClassName(
-                "productTile-details__name-value"
-              )[0].textContent ?? "Not on page";
+              product
+                .getElementsByClassName("productTile-details__name-value")[0]
+                .textContent.replace(titleRegEx, "") ?? "Not on page";
 
             const quantityAmount = parseFloat(
               //   if no quantity amount, default to 1
@@ -100,13 +113,11 @@ async function navigateCoopPages(categories) {
                     .replace(/\s+/g, " ")
                 : quantityString;
 
-            const categories = page.url().split("/")[5];
-
             const productData = {
               storeName: storeName,
               title: title,
               price: price,
-              categories: categories,
+              //   categories: category,
               incrPrice: incrementPrice,
               incrQty: incrementQuantity,
               incrStr: incrementString,
