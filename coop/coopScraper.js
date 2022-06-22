@@ -9,22 +9,22 @@ async function scrapeCoopPages(url) {
   const allProducts = await page.$$eval("div.productTile-details", (products) =>
     products.map((product) => {
       const storeName = "Coop";
+
+      const titleRegEx =
+        /naturaplan\s|prix\s|garantie\s|betty\s|bossi\s|\sca.*/gi;
       const title =
-        product.getElementsByClassName("productTile-details__name-value")[0]
-          .textContent ?? "Not on page";
+        product
+          .getElementsByClassName("productTile-details__name-value")[0]
+          .textContent.replace(titleRegEx, "") ?? "Not on page";
 
-      const brand = product.getElementsByClassName(
-        "productTile__productMeta-value-item"
-      )[0].textContent;
-
-      const quantityAmount = parseFloat(
+      const qtyAmount = parseFloat(
         product
           .getElementsByClassName("productTile__quantity-text")[0]
           .textContent.match(/\d+/g)
           .join()
       );
 
-      const quantityString = product.getElementsByClassName(
+      const qtyStr = product.getElementsByClassName(
         "productTile__quantity-text"
       )[0].textContent;
 
@@ -36,26 +36,26 @@ async function scrapeCoopPages(url) {
       );
 
       // < -- depend on above variables ... conditional
-      const incrementPrice = parseFloat(
+      const incrPrice = parseFloat(
         product
           .getElementsByClassName("productTile__price-value")[0]
           .textContent?.trim()
           .replace(/\s+/g, " ")
-          .split("/")[0] ?? price * quantityAmount
+          .split("/")[0] ?? price * qtyAmount
       );
 
-      const incrementQuantity = parseFloat(
+      const incrQty = parseFloat(
         product
           .getElementsByClassName("productTile__price-value")[0]
           .textContent.trim()
           .replace(/\s+/g, " ")
           .split("/")[1]
           ?.match(/\d+/g)
-          .join() ?? quantityAmount
+          .join() ?? qtyAmount
       );
 
-      const incrementString =
-        // check if string contains a letter, if it does than return that string, else return quantityString
+      const incrStr =
+        // check if string contains a letter, if it does than return that string, else return qtyStr
         product
           .getElementsByClassName("productTile__price-value")[0]
           .textContent?.trim()
@@ -65,18 +65,29 @@ async function scrapeCoopPages(url) {
               .getElementsByClassName("productTile__price-value")[0]
               .textContent?.trim()
               .replace(/\s+/g, " ")
-          : quantityString;
+          : qtyStr;
 
+      // const categories = page.url().split("/")[5];
+
+      const increment = {
+        incrPrice: incrPrice,
+        incrQty: incrQty,
+        incrStr: incrStr,
+      };
+
+      const quantity = { qtyAmount: qtyAmount, qtyStr: qtyStr };
       const productData = {
         storeName: storeName,
         title: title,
-        brand: brand,
-        incrementPrice: incrementPrice,
-        incrementQuantity: incrementQuantity,
-        incrementString: incrementString,
-        quantityAmount: quantityAmount,
-        quantityString: quantityString,
         price: price,
+        //   categories: categories,
+        //   incrPrice: incrPrice,
+        //   incrQty: incrQty,
+        //   incrStr: incrStr,
+        //   qtyAmount: qtyAmount,
+        //   qtyStr: qtyStr,
+        increment: increment,
+        quantity: quantity,
       };
 
       return productData;
@@ -84,15 +95,20 @@ async function scrapeCoopPages(url) {
   );
 
   //   allProducts.forEach(async (product) => {
-  //     await axios.put("http://localhost:8000/product", product);
+  //     try {
+  //       await axios.put("http://localhost:8000/product", product);
+  //     } catch (err) {
+  //       console.error(err);
+  //     }
   //   });
-
+  console.log(allProducts);
+  console.log("Finished");
   await browser.close();
 }
 
-// scrapeCoopPages(
-//   "https://www.coop.ch/de/lebensmittel/fruechte-gemuese/c/m_0001?page=2&q=%3Arelevance&sort=relevance"
-// );
+scrapeCoopPages(
+  "https://www.coop.ch/de/lebensmittel/fruechte-gemuese/c/m_0001?q=%3Arelevance&sort=relevance&pageSize=60"
+);
 
 module.exports = scrapeCoopPages;
 

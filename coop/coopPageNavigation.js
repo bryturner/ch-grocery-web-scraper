@@ -14,8 +14,8 @@ const groceryCategoryNames = [
 ];
 
 async function navigateCoopPages(categories) {
-  const browser = await puppeteer.launch({ headless: false });
-  //   const browser = await puppeteer.launch();
+  //   const browser = await puppeteer.launch({ headless: false });
+  const browser = await puppeteer.launch();
 
   const page = await browser.newPage();
 
@@ -24,23 +24,16 @@ async function navigateCoopPages(categories) {
       `https://www.coop.ch/de/lebensmittel/${category}?page=1&pageSize=60&q=%3Arelevance&sort=relevance`
     );
 
-    //  await page.waitForTimeout(3000);
-    const groceryCategory = page.url().split("/")[5];
-    console.log(groceryCategory);
+    //  const totalPages = await page.$eval(
+    //    "body > main > div:nth-child(3) > div.constrained--sm-up > div.productListPageNav.spacing-bottom-10 > div > a:nth-child(5)",
+    //    (pageNum) => parseInt(pageNum.textContent.trim())
+    //  );
 
-    page.waitForSelector(
-      "body > main > div:nth-child(3) > div.constrained--sm-up > div.productListPageNav.spacing-bottom-10 > div > a:nth-child(5)",
-      { timeout: 50000 }
-    );
-
-    const totalPages = await page.$eval(
-      "body > main > div:nth-child(3) > div.constrained--sm-up > div.productListPageNav.spacing-bottom-10 > div > a:nth-child(5)",
-      (pageNum) => parseInt(pageNum.textContent.trim())
-    );
-
-    console.log(totalPages);
+    //  console.log(totalPages);
 
     const allProductPages = [];
+
+    const totalPages = 1;
 
     for (let i = 1; i < totalPages + 1; i++) {
       await page.goto(
@@ -48,13 +41,16 @@ async function navigateCoopPages(categories) {
       );
 
       const productsOnPage = await page.$$eval(
-        "div.productTile-details",
+        //   "div.productTile-details",
+        "li.list-page__item",
         (products) =>
           products.map((product) => {
             const storeName = "Coop";
 
+            const productId = product.querySelector("a").getAttribute("id");
+
             const titleRegEx =
-              /naturaplan\s|prix\s|garantie\s|betty\s|bossi\s|\sca.*/gi;
+              /naturaplan\s|prix\s|garantie\s|betty\s|bossi\s|fairtrade\s|\sca.*|\s\d.*/gi;
             const title =
               product
                 .getElementsByClassName("productTile-details__name-value")[0]
@@ -114,10 +110,10 @@ async function navigateCoopPages(categories) {
                 : quantityString;
 
             const productData = {
+              productId: productId,
               storeName: storeName,
               title: title,
               price: price,
-              //   categories: category,
               incrPrice: incrementPrice,
               incrQty: incrementQuantity,
               incrStr: incrementString,
@@ -132,17 +128,25 @@ async function navigateCoopPages(categories) {
       allProductPages.push(productsOnPage);
     }
 
-    const allProducts = allProductPages.flat();
+    const allProducts = allProductPages
+      .flat()
+      .filter((product) => product.price); // remove any products without a price (not available at store)
 
-    //  for (let product of allProducts) {
-    //    try {
-    //      await axios.put("http://localhost:8000/product", product);
-    //    } catch (err) {
-    //      console.error(err);
-    //    }
-    //  }
+    const groceryCategory = page.url().split("/")[5];
 
-    console.log(allProducts);
+    for (let product of allProducts) {
+      product["categories"] = [groceryCategory];
+    }
+
+    for (let product of allProducts) {
+      try {
+        await axios.put("http://localhost:8000/product", product);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    //  console.log(allProducts);
   }
   console.log("Success");
   await browser.close();

@@ -4,6 +4,7 @@ const dotenv = require("dotenv");
 const mongoose = require("mongoose");
 
 const navigateCoopPages = require("./coop/coopPageNavigation.js");
+// const scrapeCoopPages = require("./coop/coopScraper");
 
 const app = express();
 

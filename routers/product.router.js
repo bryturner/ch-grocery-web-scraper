@@ -14,27 +14,34 @@ router.get("/", async (req, res) => {
 router.post("/", async (req, res) => {
   try {
     const {
+      productId,
       storeName,
       title,
-      brand,
-      incrementPrice,
-      incrementQuantity,
-      incrementString,
-      quantityAmount,
-      quantityString,
       price,
+      categories,
+      incrPrice,
+      incrQty,
+      incrStr,
+      qtyAmount,
+      qtyStr,
     } = req.body;
 
+    const increment = {
+      incrPrice: incrPrice,
+      incrQty: incrQty,
+      incrStr: incrStr,
+    };
+
+    const quantity = { qtyAmount: qtyAmount, qtyStr: qtyStr };
+
     const newProduct = new Product({
-      storeName,
-      title,
-      brand,
-      incrementPrice,
-      incrementQuantity,
-      incrementString,
-      quantityAmount,
-      quantityString,
-      price,
+      productId: productId,
+      storeName: storeName,
+      title: title,
+      price: price,
+      categories: categories,
+      increment: increment,
+      quantity: quantity,
     });
 
     const savedProduct = await newProduct.save();
@@ -46,10 +53,41 @@ router.post("/", async (req, res) => {
 
 router.put("/", async (req, res) => {
   try {
+    const {
+      productId,
+      storeName,
+      title,
+      price,
+      categories,
+      incrPrice,
+      incrQty,
+      incrStr,
+      qtyAmount,
+      qtyStr,
+    } = req.body;
+
+    const increment = {
+      incrPrice: incrPrice,
+      incrQty: incrQty,
+      incrStr: incrStr,
+    };
+
+    const quantity = { qtyAmount: qtyAmount, qtyStr: qtyStr };
+
+    const product = {
+      productId: productId,
+      storeName: storeName,
+      title: title,
+      price: price,
+      categories: categories,
+      increment: increment,
+      quantity: quantity,
+    };
+
     await Product.findOneAndUpdate(
-      { title: req.body.title },
+      { productId: req.body.productId },
       {
-        $set: req.body,
+        $set: product,
       },
       { upsert: true }
     );
