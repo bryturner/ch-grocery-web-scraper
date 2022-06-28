@@ -3,18 +3,19 @@ const cors = require("cors");
 const dotenv = require("dotenv");
 const mongoose = require("mongoose");
 
-const navigateCoopPages = require("./coop/coopPageNavigation.js");
-// const scrapeCoopPages = require("./coop/coopScraper");
+// const navigateCoopPages = require("./coop/coopPageNavigation.js");
+// const navigateMigrosPages = require("./migros/migrosPageNavigation.js");
 
+const migrosScraper = require("./migros/migrosScraper.js");
 const app = express();
 
 dotenv.config();
 
-mongoose.connect(
-  process.env.MONGO_DB_CONNECTION,
-  { useNewUrlParser: true, useUnifiedTopology: true },
-  (err) => (err ? console.error(err) : console.log("Connected to DB"))
-);
+// mongoose.connect(
+//   process.env.MONGO_DB_CONNECTION,
+//   { useNewUrlParser: true, useUnifiedTopology: true },
+//   (err) => (err ? console.error(err) : console.log("Connected to DB"))
+// );
 
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => console.log(`Listening on port ${PORT}`));

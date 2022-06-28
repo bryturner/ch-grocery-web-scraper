@@ -9,8 +9,9 @@ const productSchema = new mongoose.Schema(
     categories: Array,
     increment: Object,
     quantity: Object,
-    favorites: { type: Array, required: true },
-    grocList: { type: Array, required: true },
+    //  Could use in the future if there are lots of users in order to more quickly reference products on a user's favorites or grocery list
+    //  favorites: { type: Array, required: true },
+    //  grocList: { type: Array, required: true },
   },
   { timestamps: true }
 );

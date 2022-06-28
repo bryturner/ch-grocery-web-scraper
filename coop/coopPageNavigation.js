@@ -19,135 +19,147 @@ async function navigateCoopPages(categories) {
 
   const page = await browser.newPage();
 
-  for (let category of categories) {
-    await page.goto(
-      `https://www.coop.ch/de/lebensmittel/${category}?page=1&pageSize=60&q=%3Arelevance&sort=relevance`
-    );
-
-    //  const totalPages = await page.$eval(
-    //    "body > main > div:nth-child(3) > div.constrained--sm-up > div.productListPageNav.spacing-bottom-10 > div > a:nth-child(5)",
-    //    (pageNum) => parseInt(pageNum.textContent.trim())
-    //  );
-
-    //  console.log(totalPages);
-
-    const allProductPages = [];
-
-    const totalPages = 1;
-
-    for (let i = 1; i < totalPages + 1; i++) {
+  try {
+    for (let category of categories) {
       await page.goto(
-        `https://www.coop.ch/de/lebensmittel/${category}?page=${i}&pageSize=60&q=%3Arelevance&sort=relevance`
+        `https://www.coop.ch/de/lebensmittel/${category}?page=1&pageSize=60&q=%3Arelevance&sort=relevance`
       );
 
-      const productsOnPage = await page.$$eval(
-        //   "div.productTile-details",
-        "li.list-page__item",
-        (products) =>
-          products.map((product) => {
-            const storeName = "Coop";
+      //  const totalPages = await page.$eval(
+      //    "body > main > div:nth-child(3) > div.constrained--sm-up > div.productListPageNav.spacing-bottom-10 > div > a:nth-child(5)",
+      //    (pageNum) => parseInt(pageNum.textContent.trim())
+      //  );
 
-            const productId = product.querySelector("a").getAttribute("id");
+      //  console.log(totalPages);
 
-            const titleRegEx =
-              /naturaplan\s|prix\s|garantie\s|betty\s|bossi\s|fairtrade\s|\sca.*|\s\d.*/gi;
-            const title =
-              product
-                .getElementsByClassName("productTile-details__name-value")[0]
-                .textContent.replace(titleRegEx, "") ?? "Not on page";
+      const allProductPages = [];
 
-            const quantityAmount = parseFloat(
-              //   if no quantity amount, default to 1
-              product
-                .getElementsByClassName("productTile__quantity-text")[0]
-                .textContent.match(/\d+/g)
-                ?.join() ?? 1
-            );
+      const totalPages = 1;
 
-            const quantityString = product.getElementsByClassName(
-              "productTile__quantity-text"
-            )[0].textContent;
+      for (let i = 1; i < totalPages + 1; i++) {
+        await page.goto(
+          `https://www.coop.ch/de/lebensmittel/${category}?page=${i}&pageSize=60&q=%3Arelevance&sort=relevance`
+        );
 
-            const price = parseFloat(
-              product
-                .getElementsByClassName(
-                  "productTile__price-value-lead-price"
-                )[0]
-                .textContent.trim()
-                .replace(/\s+/g, " ")
-            );
+        await page.waitForSelector("li.list-page__item");
 
-            // < -- depend on above variables ... conditional
-            const incrementPrice = parseFloat(
-              product
-                .getElementsByClassName("productTile__price-value")[0]
-                .textContent?.trim()
-                .replace(/\s+/g, " ")
-                ?.split("/")[0] ?? price * quantityAmount
-            );
+        const productsOnPage = await page.$$eval(
+          //   "div.productTile-details",
+          "li.list-page__item",
+          (products) =>
+            products.map((product) => {
+              const titleReg =
+                /naturaplan\s|prix\s|garantie\s|betty\s|bossi\s|fairtrade\s|\sca.*|\s\d.*/gi;
 
-            const incrementQuantity = parseFloat(
-              product
-                .getElementsByClassName("productTile__price-value")[0]
-                .textContent.trim()
-                .replace(/\s+/g, " ")
-                .split("/")[1]
-                ?.match(/\d+/g)
-                ?.join() ?? quantityAmount
-            );
+              const storeName = "Coop";
 
-            const incrementString =
-              // check if string contains a letter, if it does than return that string, else return quantityString
-              product
-                .getElementsByClassName("productTile__price-value")[0]
-                .textContent?.trim()
-                .replace(/\s+/g, " ")
-                .replace(/\d|\W/g, "").length !== 0
-                ? product
-                    .getElementsByClassName("productTile__price-value")[0]
-                    .textContent?.trim()
-                    .replace(/\s+/g, " ")
-                : quantityString;
+              const productId =
+                product.querySelector("a").getAttribute("id") || -1;
 
-            const productData = {
-              productId: productId,
-              storeName: storeName,
-              title: title,
-              price: price,
-              incrPrice: incrementPrice,
-              incrQty: incrementQuantity,
-              incrStr: incrementString,
-              qtyAmount: quantityAmount,
-              qtyStr: quantityString,
-            };
+              const title =
+                product
+                  .getElementsByClassName("productTile-details__name-value")[0]
+                  .textContent.replace(titleReg, "") || -1;
 
-            return productData;
-          })
-      );
+              const price = parseFloat(
+                product
+                  .getElementsByClassName(
+                    "productTile__price-value-lead-price"
+                  )[0]
+                  .textContent.trim()
+                  .replace(/\s+/g, " ") || -1
+              );
 
-      allProductPages.push(productsOnPage);
-    }
+              const quantityAmount = parseFloat(
+                //   if no quantity amount, default to 1
+                product
+                  .getElementsByClassName("productTile__quantity-text")[0]
+                  .textContent.match(/\d+/g)
+                  ?.join() ?? 1
+              );
 
-    const allProducts = allProductPages
-      .flat()
-      .filter((product) => product.price); // remove any products without a price (not available at store)
+              const quantityString =
+                product.getElementsByClassName("productTile__quantity-text")[0]
+                  .textContent || "n/a";
 
-    const groceryCategory = page.url().split("/")[5];
+              // < -- depend on above variables ... conditional
+              const incrementPrice = parseFloat(
+                product
+                  .getElementsByClassName("productTile__price-value")[0]
+                  .textContent?.trim()
+                  .replace(/\s+/g, " ")
+                  ?.split("/")[0] || price * quantityAmount
+              );
 
-    for (let product of allProducts) {
-      product["categories"] = [groceryCategory];
-    }
+              const incrementQuantity = parseFloat(
+                product
+                  .getElementsByClassName("productTile__price-value")[0]
+                  .textContent.trim()
+                  .replace(/\s+/g, " ")
+                  .split("/")[1]
+                  ?.match(/\d+/g)
+                  ?.join() || quantityAmount
+              );
 
-    for (let product of allProducts) {
-      try {
-        await axios.put("http://localhost:8000/product", product);
-      } catch (err) {
-        console.error(err);
+              const incrementString =
+                // check if string contains a letter, if it does than return that string, else return quantityString
+                product
+                  .getElementsByClassName("productTile__price-value")[0]
+                  .textContent?.trim()
+                  .replace(/\s+/g, " ")
+                  .replace(/\d|\W/g, "").length !== 0
+                  ? product
+                      .getElementsByClassName("productTile__price-value")[0]
+                      .textContent?.trim()
+                      .replace(/\s+/g, " ")
+                  : quantityString;
+
+              const productData = {
+                productId: productId,
+                storeName: storeName,
+                title: title,
+                price: price,
+                incrPrice: incrementPrice,
+                incrQty: incrementQuantity,
+                incrStr: incrementString,
+                qtyAmount: quantityAmount,
+                qtyStr: quantityString,
+              };
+
+              return productData;
+            })
+        );
+
+        allProductPages.push(productsOnPage);
       }
-    }
 
-    //  console.log(allProducts);
+      //   if a product doesn't have a price, title, or id it is not stored in the db
+      const allProducts = allProductPages.flat().filter((product) => {
+        for (let value of Object.values(product)) {
+          if (value !== -1) return true;
+        }
+      });
+
+      const groceryCategory = page.url().split("/")[5];
+
+      for (let product of allProducts) {
+        product["categories"] = [groceryCategory];
+      }
+
+      for (let product of allProducts) {
+        try {
+          await axios.put("http://localhost:8000/product", product);
+        } catch (err) {
+          console.error(err);
+        }
+      }
+
+      //  console.log(allProducts);
+    }
+  } catch (err) {
+    console.error(err);
   }
+
   console.log("Success");
   await browser.close();
 }
