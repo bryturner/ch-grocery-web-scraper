@@ -19,39 +19,32 @@ const groceryCategoryNames = [
   //   'salzige-lebensmittel/gewurze-saucen',
 ];
 
-async function migrosPageNavigation(categories) {
+async function scrapeMigrosPages(categories) {
   const browser = await puppeteer.launch({
     headless: true,
   });
-
   const page = await browser.pages().then((e) => e[0]);
 
-  await page.setViewport({
-    width: 1000,
-    height: 800,
-    isMobile: false,
-  });
-
-  await page.goto("https://www.migros.ch/de");
-  const zipCookie = { name: "mo-guestZip", value: "8001" };
-  await page.setCookie(zipCookie);
-
   try {
+    await page.goto("https://www.migros.ch/de");
+    const zipCookie = { name: "mo-guestZip", value: "8001" };
+    await page.setCookie(zipCookie);
+
     for (let category of categories) {
       await page.goto(`https://www.migros.ch/de/category/${category}`);
 
       await page.waitForSelector("div.btn-view-more");
 
-      //  while (
-      //    (await page.$(
-      //      "#catalog-products-content > div.products-view-body > app-products-display > div:nth-child(3) > div > button"
-      //    )) !== null
-      //  ) {
-      //    await page.click(
-      //      "#catalog-products-content > div.products-view-body > app-products-display > div:nth-child(3) > div > button"
-      //    );
-      //    await page.waitForTimeout(5000);
-      //  }
+      while (
+        (await page.$(
+          "#catalog-products-content > div.products-view-body > app-products-display > div:nth-child(3) > div > button"
+        )) !== null
+      ) {
+        await page.click(
+          "#catalog-products-content > div.products-view-body > app-products-display > div:nth-child(3) > div > button"
+        );
+        await page.waitForTimeout(5000);
+      }
 
       const productsOnPage = await page.$$eval(
         "div.show-product-detail",
@@ -63,12 +56,15 @@ async function migrosPageNavigation(categories) {
             const priceReg = /(?<=price">)[^<]+(?=<)/g;
             const titleRegMatch = /(?<=>)[^\d<]+(?=<)/g;
             const qtyStringReg = /(?<=weight"><!---->)[^<]+(?=<)/g;
-            const qtyAmountReg = /(?<=>)[^\D]+(?=\D)/g;
 
             const storeName = "Migros";
 
             const productId =
-              productDetail.innerHTML.match(idReg)?.join("").trim() || -1;
+              productDetail.innerHTML
+                .match(idReg)
+                ?.join("")
+                .trim()
+                .concat("migros") || -1;
 
             const title =
               productDetail.innerHTML.match(titleRegMatch)?.join(" ") ||
@@ -83,16 +79,12 @@ async function migrosPageNavigation(categories) {
               productDetail.innerHTML.match(qtyStringReg)?.join("") ||
               price.toString();
 
-            const quantityAmount =
-              parseFloat(productDetail.innerHTML.match(qtyAmountReg)) || price;
-
             const productData = {
               productId: productId,
               storeName: storeName,
               title: title,
               price: price,
               qtyStr: quantityString,
-              qtyAmount: quantityAmount,
             };
 
             return productData;
@@ -104,18 +96,20 @@ async function migrosPageNavigation(categories) {
         return product.price > 0 || product.id > 0 || product.title === String;
       });
 
-      const groceryRegReplace = /salzige-lebensmittel\//g;
+      //  get grocery category from page url
       const groceryCategory = page
         .url()
         .match(/(?<=category\/)\w.*/g)
-        .join("")
-        .replace(groceryRegReplace, "");
+        .join("");
 
-      const finalProducts = allProducts.map((product) => {
+      const allFormattedProducts = allProducts.map((product) => {
         const { price, qtyStr, title } = product;
 
         // use helper functions to format and create object vals
-        const increment = helpers.getProductIncrement(price.toFixed(2), qtyStr);
+        const formattedIncrementString = helpers.getProductIncrement(
+          price.toFixed(2),
+          qtyStr
+        );
         const formattedCategory = helpers.formatCategory(groceryCategory);
 
         // ===== format product values =====
@@ -124,41 +118,40 @@ async function migrosPageNavigation(categories) {
           /fresca\s|anna's\sbest\s|regionaler\s|preis\s|m-budget\s|sylvain\s&\sco\s|extra\s|frifrench\s|back\sto\sthe\sroots|demeter\s|statt\s|&nbsp;\s/gi;
         const qtyStringRegReplace = /st\u00fcck\s/gi;
 
-        // values
+        // format values
         const formattedTitle = title.replace(titleRegReplace, "").trim();
         const formattedQuantityString = qtyStr
           .replace(qtyStringRegReplace, "ST")
           .replace(/\s+/g, "")
           .trim();
-        const incrementQuantity = parseFloat(
-          increment.split("/")[1].match(/\d+/g).join()
-        );
-        const incrementPrice = parseFloat(increment.split("/")[0]);
 
         //   update product values before db insertion
         product["title"] = formattedTitle;
         product["categories"] = [formattedCategory];
         product["qtyStr"] = formattedQuantityString;
-        product["incrStr"] = increment;
-        product["incrQty"] = incrementQuantity;
-        product["incrPrice"] = incrementPrice;
+        product["incrStr"] = formattedIncrementString;
 
         return product;
       });
 
-      console.log(finalProducts);
-
-      console.log("Success");
+      const bulkResponse = await axios.put(
+        "http://localhost:8000/product/bulk",
+        allFormattedProducts
+      );
+      console.log(
+        `Status:${bulkResponse.status}! ${groceryCategory} in the DB`
+      );
     }
   } catch (err) {
+    page.reload();
     console.error(err);
   }
 
   await browser.close();
 }
 
-migrosPageNavigation(["obst-gemuse"]);
+scrapeMigrosPages(["obst-gemuse"]);
 
-module.exports = migrosPageNavigation;
+module.exports = scrapeMigrosPages;
 
 // "https://www.migros.ch/de/category/obst-gemuse"
