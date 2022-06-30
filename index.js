@@ -6,7 +6,9 @@ const mongoose = require("mongoose");
 // const navigateCoopPages = require("./coop/coopPageNavigation.js");
 // const navigateMigrosPages = require("./migros/migrosPageNavigation.js");
 
-const migrosScraper = require("./migros/migrosScraper.js");
+// const migrosScraper = require("./migros/migrosScraper.js");
+
+// const dennerScraper = require("./denner/dennerScraper.js");
 const app = express();
 
 dotenv.config();
