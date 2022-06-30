@@ -69,26 +69,8 @@ router.post("/", async (req, res) => {
 
 router.put("/", async (req, res) => {
   try {
-    const {
-      productId,
-      storeName,
-      title,
-      price,
-      categories,
-      incrPrice,
-      incrQty,
-      incrStr,
-      qtyAmount,
-      qtyStr,
-    } = req.body;
-
-    const increment = {
-      incrPrice: incrPrice,
-      incrQty: incrQty,
-      incrStr: incrStr,
-    };
-
-    const quantity = { qtyAmount: qtyAmount, qtyStr: qtyStr };
+    const { productId, storeName, title, price, categories, incrStr, qtyStr } =
+      req.body;
 
     const product = {
       productId: productId,
@@ -96,8 +78,8 @@ router.put("/", async (req, res) => {
       title: title,
       price: price,
       categories: categories,
-      increment: increment,
-      quantity: quantity,
+      incrStr: incrStr,
+      qtyStr: qtyStr,
     };
 
     await Product.findOneAndUpdate(
@@ -113,10 +95,23 @@ router.put("/", async (req, res) => {
   }
 });
 
-router.put("/many", async (req, res) => {
+router.put("/bulk", async (req, res) => {
   try {
+    const products = req.body;
+
+    await Product.bulkWrite(
+      products.map((product) => ({
+        updateOne: {
+          filter: { productId: product.productId },
+          update: { $set: product },
+          upsert: true,
+        },
+      }))
+    );
+    res.status(200).send();
   } catch (err) {
     console.error(err);
+    res.status(500).send();
   }
 });
 

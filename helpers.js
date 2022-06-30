@@ -24,8 +24,6 @@ function getProductIncrement(price, increment) {
       increment.match(/[a-z]/gi)?.join("") || `${price.trim()}/1ST`;
   }
 
-  //   if(priceNumber === incrementQuantity) return `${price}/1ST`;
-
   // the increment quantity 1 or 100 can be used directly as an increment without any further division
   if (incrementQuantity === 100 || incrementQuantity === 1) {
     if (increment.includes("x")) {
@@ -89,10 +87,11 @@ const formatQtyString = (str) => {
 };
 
 const formatCategory = (str) => {
-  const categoryRegReplace = /und-|obst-gemuse/gi;
+  const categoryRegReplace = /und-|obst-gemuse|salzige-lebensmittel\//gi;
   const categoryReplaceObj = {
     "und-": "",
     "obst-gemuse": "fruechte-gemuese",
+    "salzige-lebensmittel/": "",
   };
 
   return str.replace(categoryRegReplace, function (matched) {

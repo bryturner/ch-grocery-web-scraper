@@ -6,16 +6,10 @@ const groceryCategoryNames = [];
 
 async function dennerScraper(url) {
   const browser = await puppeteer.launch({
-    headless: false,
+    headless: true,
   });
-
   const page = await browser.pages().then((e) => e[0]);
 
-  await page.setViewport({
-    width: 1000,
-    height: 800,
-    isMobile: false,
-  });
   try {
     await page.goto(url);
 
@@ -72,34 +66,34 @@ async function dennerScraper(url) {
       .join("")
       .replace("sortiment/", "");
 
-    const finalProducts = allProducts.map((product) => {
-      const { qtyStr, price } = product;
+    const allFormattedProducts = allProducts.map((product) => {
+      const { qtyStr, price, title } = product;
+
+      // ===== format product values =====
+      // RegEx
+      const titleRegReplace = /mmmh\s|ip-suisse\s|/gi;
 
       // use helper functions to format and create object vals
-      const increment = helpers.getProductIncrement(
+      const formattedIncrementString = helpers.getProductIncrement(
         price.toFixed(2),
-        quantityString
+        qtyStr
       );
       const formattedQtyStr = helpers.formatQtyString(qtyStr);
       const formattedCategory = helpers.formatCategory(groceryCategory);
 
-      // format vals
-      const incrementQuantity = parseFloat(
-        increment.split("/")[1].match(/\d+/g).join()
-      );
-      const incrementPrice = parseFloat(increment.split("/")[0]);
-      const quantityAmount = parseFloat(formattedQtyStr.split("/")[0]) || price;
+      // format values
+      const formattedTitle = title.replace(titleRegReplace, "");
 
-      product["qtyStr"] = formattedQtyStr;
-      product["qtyAmount"] = quantityAmount;
+      // update product values before db insertion
+      product["title"] = formattedTitle;
       product["categories"] = [formattedCategory];
-      product["incrStr"] = increment;
-      product["incrQty"] = incrementQuantity;
-      product["incrPrice"] = incrementPrice;
+      product["qtyStr"] = formattedQtyStr;
+      product["incrStr"] = formattedIncrementString;
+
       return product;
     });
 
-    console.log(finalProducts);
+    console.log(allFormattedProducts);
 
     console.log("Success");
   } catch (err) {
