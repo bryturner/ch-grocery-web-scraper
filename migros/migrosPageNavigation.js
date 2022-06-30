@@ -1,97 +1,164 @@
 const puppeteer = require("puppeteer");
 const axios = require("axios");
+const helpers = require("../helpers");
 
-const groceryCategoryNames = [];
+const groceryCategoryNames = [
+  "obst-gemuse",
+  "fleisch-fisch",
+  //   "milchprodukte-eier-frische-ferti/milch-butter-eier",
+  //'milchprodukte-eier-frische-ferti',
+  //   "brot-backwaren",
+  //   "tiefkuhlprodukte",
+  //   "getranke-kaffee-tee",
+  //   "susse-lebensmittel",
+  //   "wein-bier-spirituosen",
+  //   "salzige-lebensmittel",
+  //"salzige-lebensmittel/suppen-bouillons" vorraete
+  //'salzige-lebensmittel/teigwaren-reis-gries-getreide', vorraete
+  //   'salzige-lebensmittel/konserven-fertiggerichte', vorraete
+  //   'salzige-lebensmittel/gewurze-saucen',
+];
 
-async function navigateMigrosPages(categories) {
-  //   const browser = await puppeteer.launch({ headless: false });
-  const browser = await puppeteer.launch();
+async function migrosPageNavigation(categories) {
+  const browser = await puppeteer.launch({
+    headless: true,
+  });
 
-  const page = await browser.newPage();
+  const page = await browser.pages().then((e) => e[0]);
 
-  for (let category of categories) {
-    await page.goto(`https://www.migros.ch/de/category/${category}`);
+  await page.setViewport({
+    width: 1000,
+    height: 800,
+    isMobile: false,
+  });
 
-    const zipCookie = { name: "mo-guestZip", value: "8001" };
-    await page.setCookie(zipCookie);
+  await page.goto("https://www.migros.ch/de");
+  const zipCookie = { name: "mo-guestZip", value: "8001" };
+  await page.setCookie(zipCookie);
 
-    await page.waitForSelector("div.show-product-detail");
+  try {
+    for (let category of categories) {
+      await page.goto(`https://www.migros.ch/de/category/${category}`);
 
-    const productsOnPage = await page.$$eval(
-      "div.show-product-detail",
-      (productDetails) =>
-        productDetails.map((productDetail) => {
-          const idReg = /(?<=image"\shref="\/de\/product\/)[^"]+(?=")/g;
-          const priceReg = /(?<=price">)[^<]+(?=<)/g;
-          const titleRegMatch = /(?<=>)[^\d<]+(?=<)/g;
-          const titleRegReplace =
-            /fresca\s|anna's\sbest\s|regionaler\s|preis\s|m-budget\s/gi;
-          const qtyStringReg = /(?<=weight"><!---->)[^<]+(?=<)/g;
-          const qtyAmountReg = /(?<=>)[^\D]+(?=\D)/g;
+      await page.waitForSelector("div.btn-view-more");
 
-          const storeName = "Migros";
+      //  while (
+      //    (await page.$(
+      //      "#catalog-products-content > div.products-view-body > app-products-display > div:nth-child(3) > div > button"
+      //    )) !== null
+      //  ) {
+      //    await page.click(
+      //      "#catalog-products-content > div.products-view-body > app-products-display > div:nth-child(3) > div > button"
+      //    );
+      //    await page.waitForTimeout(5000);
+      //  }
 
-          const productId =
-            productDetail.innerHTML.match(idReg).join("").trim() || -1;
+      const productsOnPage = await page.$$eval(
+        "div.show-product-detail",
+        (productDetails) =>
+          productDetails.map((productDetail) => {
+            // get product id from href as the product id used is unlikely to change in the future
+            const idReg = /(?<=image"\shref="\/de\/product\/)[^"]+(?=")/g;
+            // !! Have to use innerHTML to find values -> problem with page rendering and headless browser
+            const priceReg = /(?<=price">)[^<]+(?=<)/g;
+            const titleRegMatch = /(?<=>)[^\d<]+(?=<)/g;
+            const qtyStringReg = /(?<=weight"><!---->)[^<]+(?=<)/g;
+            const qtyAmountReg = /(?<=>)[^\D]+(?=\D)/g;
 
-          const title =
-            productDetail.innerHTML
-              .match(titleRegMatch)
-              .join(" ")
-              .trim()
-              .replace(titleRegReplace, "") || -1;
+            const storeName = "Migros";
 
-          const price =
-            parseFloat(
-              productDetail.innerHTML.match(priceReg).join("").trim()
-            ) || -1;
+            const productId =
+              productDetail.innerHTML.match(idReg)?.join("").trim() || -1;
 
-          const quantityString =
-            productDetail.innerHTML.match(qtyStringReg).join("").trim() ||
-            price.toString();
+            const title =
+              productDetail.innerHTML.match(titleRegMatch)?.join(" ") ||
+              undefined;
 
-          const quantityAmount =
-            parseFloat(productDetail.innerHTML.match(qtyAmountReg)) || price;
+            const price =
+              parseFloat(
+                productDetail.innerHTML.match(priceReg)?.join("").trim()
+              ) || -1;
 
-          const productData = {
-            productId: productId,
-            storeName: storeName,
-            title: title,
-            price: price,
-            quantityString: quantityString,
-            quantityAmount: quantityAmount,
-          };
+            const quantityString =
+              productDetail.innerHTML.match(qtyStringReg)?.join("") ||
+              price.toString();
 
-          return productData;
-        })
-    );
+            const quantityAmount =
+              parseFloat(productDetail.innerHTML.match(qtyAmountReg)) || price;
 
-    console.log(productsOnPage);
-    //  const allProducts = productsOnPage.flat();
-    // .filter((product) => product.price); // remove any products without a price (not available at store)
+            const productData = {
+              productId: productId,
+              storeName: storeName,
+              title: title,
+              price: price,
+              qtyStr: quantityString,
+              qtyAmount: quantityAmount,
+            };
 
-    //  const groceryCategory = page.url().split("/")[5];
+            return productData;
+          })
+      );
 
-    //  for (let product of allProducts) {
-    //    product["categories"] = [groceryCategory];
-    //  }
+      //   if a product doesn't have a price, title, or id it is not stored in the db
+      const allProducts = productsOnPage.filter((product) => {
+        return product.price > 0 || product.id > 0 || product.title === String;
+      });
 
-    //  for (let product of allProducts) {
-    //    try {
-    //      await axios.put("http://localhost:8000/product", product);
-    //    } catch (err) {
-    //      console.error(err);
-    //    }
-    //  }
+      const groceryRegReplace = /salzige-lebensmittel\//g;
+      const groceryCategory = page
+        .url()
+        .match(/(?<=category\/)\w.*/g)
+        .join("")
+        .replace(groceryRegReplace, "");
 
-    //   console.log(allProducts);
+      const finalProducts = allProducts.map((product) => {
+        const { price, qtyStr, title } = product;
+
+        // use helper functions to format and create object vals
+        const increment = helpers.getProductIncrement(price.toFixed(2), qtyStr);
+        const formattedCategory = helpers.formatCategory(groceryCategory);
+
+        // ===== format product values =====
+        // RegEx
+        const titleRegReplace =
+          /fresca\s|anna's\sbest\s|regionaler\s|preis\s|m-budget\s|sylvain\s&\sco\s|extra\s|frifrench\s|back\sto\sthe\sroots|demeter\s|statt\s|&nbsp;\s/gi;
+        const qtyStringRegReplace = /st\u00fcck\s/gi;
+
+        // values
+        const formattedTitle = title.replace(titleRegReplace, "").trim();
+        const formattedQuantityString = qtyStr
+          .replace(qtyStringRegReplace, "ST")
+          .replace(/\s+/g, "")
+          .trim();
+        const incrementQuantity = parseFloat(
+          increment.split("/")[1].match(/\d+/g).join()
+        );
+        const incrementPrice = parseFloat(increment.split("/")[0]);
+
+        //   update product values before db insertion
+        product["title"] = formattedTitle;
+        product["categories"] = [formattedCategory];
+        product["qtyStr"] = formattedQuantityString;
+        product["incrStr"] = increment;
+        product["incrQty"] = incrementQuantity;
+        product["incrPrice"] = incrementPrice;
+
+        return product;
+      });
+
+      console.log(finalProducts);
+
+      console.log("Success");
+    }
+  } catch (err) {
+    console.error(err);
   }
-  console.log("Success");
+
   await browser.close();
 }
 
-navigateMigrosPages(["obst-gemuse"]);
+migrosPageNavigation(["obst-gemuse"]);
 
-module.exports = navigateMigrosPages;
+module.exports = migrosPageNavigation;
 
 // "https://www.migros.ch/de/category/obst-gemuse"

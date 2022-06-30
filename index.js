@@ -4,11 +4,15 @@ const dotenv = require("dotenv");
 const mongoose = require("mongoose");
 
 // const navigateCoopPages = require("./coop/coopPageNavigation.js");
-// const navigateMigrosPages = require("./migros/migrosPageNavigation.js");
+const navigateMigrosPages = require("./migros/migrosPageNavigation.js");
 
 // const migrosScraper = require("./migros/migrosScraper.js");
+// const migrosPageNavigation = require("./migros/migrosPageNavigation.js");
 
 // const dennerScraper = require("./denner/dennerScraper.js");
+
+// const sparScraper = require("./spar/sparScraper.js");
+
 const app = express();
 
 dotenv.config();

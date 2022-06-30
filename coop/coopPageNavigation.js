@@ -138,22 +138,27 @@ async function navigateCoopPages(categories) {
         return product.price > 0 || product.id > 0 || product.title === String;
       });
 
-      const groceryCategory = page.url().split("/")[5];
+      const groceryCategory = page
+        .url()
+        .match(/(?<=lebensmittel\/)\w.+(?=\/c)/g)
+        .join("");
+      // .split("/")[5];
       // /(?<=lebensmittel\/)\w.+(?=\/c)/g
 
-      for (let product of allProducts) {
+      const finalProducts = allProducts.map((product) => {
         product["categories"] = [groceryCategory];
-      }
 
-      for (let product of allProducts) {
-        try {
-          await axios.put("http://localhost:8000/product", product);
-        } catch (err) {
-          console.error(err);
-        }
-      }
+        return product;
+      });
+      // for (let product of allProducts) {
+      //   product["categories"] = [groceryCategory];
+      // }
 
-      //  console.log(allProducts);
+      // for (let product of allProducts) {
+      //   await axios.put("http://localhost:8000/product", product);
+      // }
+
+      console.log(finalProducts);
     }
   } catch (err) {
     console.error(err);

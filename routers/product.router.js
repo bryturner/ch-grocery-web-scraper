@@ -10,6 +10,23 @@ router.get("/", async (req, res) => {
   }
 });
 
+// const queryMostRecent = req.query.mostRecent;
+// 	const queryCategory = req.query.category;
+// 	try {
+// 		let products;
+
+// 		if (queryMostRecent) {
+// 			products = await Product.find().sort({ createdAt: -1 }).limit(1);
+// 		} else if (queryCategory) {
+// 			products = await Product.find({
+// 				categories: {
+// 					$in: [queryCategory],
+// 				},
+// 			});
+// 		} else {
+// 			products = await Product.find();
+// 		}
+
 router.post("/", async (req, res) => {
   try {
     const {
@@ -91,6 +108,13 @@ router.put("/", async (req, res) => {
       { upsert: true }
     );
     res.send();
+  } catch (err) {
+    console.error(err);
+  }
+});
+
+router.put("/many", async (req, res) => {
+  try {
   } catch (err) {
     console.error(err);
   }
