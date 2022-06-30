@@ -75,12 +75,12 @@ async function navigateCoopPages(categories) {
                 product
                   .getElementsByClassName("productTile__quantity-text")[0]
                   .textContent.match(/\d+/g)
-                  ?.join() ?? 1
+                  ?.join() || 1
               );
 
               const quantityString =
                 product.getElementsByClassName("productTile__quantity-text")[0]
-                  .textContent || "n/a";
+                  .textContent || price.toString();
 
               // < -- depend on above variables ... conditional
               const incrementPrice = parseFloat(
@@ -135,12 +135,11 @@ async function navigateCoopPages(categories) {
 
       //   if a product doesn't have a price, title, or id it is not stored in the db
       const allProducts = allProductPages.flat().filter((product) => {
-        for (let value of Object.values(product)) {
-          if (value !== -1) return true;
-        }
+        return product.price > 0 || product.id > 0 || product.title === String;
       });
 
       const groceryCategory = page.url().split("/")[5];
+      // /(?<=lebensmittel\/)\w.+(?=\/c)/g
 
       for (let product of allProducts) {
         product["categories"] = [groceryCategory];

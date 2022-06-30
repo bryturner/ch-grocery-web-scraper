@@ -1,15 +1,29 @@
 const puppeteer = require("puppeteer");
 const axios = require("axios");
-const getProductIncrement = require("./migrosIncrementHelper.js");
+const helpers = require("../helpers");
 
-const groceryCategoryNames = [];
+const groceryCategoryNames = [
+  "obst-gemuse",
+  "fleisch-fisch",
+  "milchprodukte-eier-frische-ferti/milch-butter-eier",
+  //'milchprodukte-eier-frische-ferti',
+  "brot-backwaren",
+  "tiefkuhlprodukte",
+  "getranke-kaffee-tee",
+  "susse-lebensmittel",
+  "wein-bier-spirituosen",
+  "salzige-lebensmittel",
+  //"salzige-lebensmittel/suppen-bouillons" vorraete
+  //'salzige-lebensmittel/teigwaren-reis-gries-getreide', vorraete
+  //   'salzige-lebensmittel/konserven-fertiggerichte', vorraete
+  //   'salzige-lebensmittel/gewurze-saucen',
+];
 
 async function migrosScraper(url) {
   const browser = await puppeteer.launch({
     headless: false,
   });
 
-  //   const browser = await puppeteer.launch();
   const page = await browser.pages().then((e) => e[0]);
 
   await page.setViewport({
@@ -22,9 +36,6 @@ async function migrosScraper(url) {
 
     const zipCookie = { name: "mo-guestZip", value: "8001" };
     await page.setCookie(zipCookie);
-
-    //   await page.waitForSelector("div.show-product-detail");
-
     await page.waitForSelector("div.btn-view-more");
 
     //  while (
@@ -86,8 +97,8 @@ async function migrosScraper(url) {
             storeName: storeName,
             title: title,
             price: price,
-            quantityString: quantityString,
-            quantityAmount: quantityAmount,
+            qtyStr: quantityString,
+            qtyAmount: qtyAmount,
           };
 
           return productData;
@@ -99,28 +110,37 @@ async function migrosScraper(url) {
       return product.price > 0 || product.id > 0 || product.title === String;
     });
 
-    let groceryCategory = page.url().split("/")[5];
+    const groceryRegReplace = /salzige-lebensmittel\//g;
+    const groceryCategory = page
+      .url()
+      .match(/(?<=category\/)\w.*/g)
+      .join("")
+      .replace(groceryRegReplace, "");
 
-    groceryCategory = groceryCategory.replace("obst", "fruechte");
+    const finalProducts = allProducts.map((product) => {
+      const { price, qtyStr } = product;
 
-    for (let product of allProducts) {
-      const increment = getProductIncrement(
-        product.price.toFixed(2),
-        product.quantityString
-      );
+      // use helper functions to format and create object vals
+      const increment = helpers.getProductIncrement(price.toFixed(2), qtyStr);
+      const formattedCategory = helpers.formatCategory(groceryCategory);
 
+      // format vals
       const incrementQuantity = parseFloat(
         increment.split("/")[1].match(/\d+/g).join()
       );
       const incrementPrice = parseFloat(increment.split("/")[0]);
 
-      product["categories"] = [groceryCategory];
+      // const qtyAmount = parseFloat(formattedQtyStr.split("/")[0]) || price;
+      // product['qtyAmount'] = quantityAmount;
+      product["categories"] = [formattedCategory];
       product["incrStr"] = increment;
       product["incrQty"] = incrementQuantity;
       product["incrPrice"] = incrementPrice;
-    }
 
-    console.log(allProducts);
+      return product;
+    });
+
+    //  console.log(finalProducts);
 
     console.log("Success");
   } catch (err) {
